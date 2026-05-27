@@ -3,21 +3,48 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-from supabase import create_client
 
 app = Flask(__name__, static_folder='../static')
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-BOT_TOKEN  = os.environ.get("BOT_TOKEN")
-ADMIN_ID   = os.environ.get("ADMIN_CHAT_ID")
-EMAIL_USER = os.environ.get("EMAIL_USER")
-EMAIL_PASS = os.environ.get("EMAIL_PASSWORD")
-GEMINI_KEY = os.environ.get("GEMINI_KEY")
-SB_URL     = os.environ.get("SUPABASE_URL")
-SB_KEY     = os.environ.get("SUPABASE_SERVICE_KEY")
+BOT_TOKEN  = os.environ.get("BOT_TOKEN", "")
+ADMIN_ID   = os.environ.get("ADMIN_CHAT_ID", "")
+EMAIL_USER = os.environ.get("EMAIL_USER", "")
+EMAIL_PASS = os.environ.get("EMAIL_PASSWORD", "")
+GEMINI_KEY = os.environ.get("GEMINI_KEY", "")
+SB_URL     = os.environ.get("SUPABASE_URL", "")
+SB_KEY     = os.environ.get("SUPABASE_SERVICE_KEY", "")
 
-sb = create_client(SB_URL, SB_KEY)
+# ── Supabase через прямі HTTP запити (без бібліотеки) ──────────
+SB_HEADERS = {
+    "apikey": SB_KEY,
+    "Authorization": f"Bearer {SB_KEY}",
+    "Content-Type": "application/json",
+    "Prefer": "return=representation"
+}
 
+def sb_select(table, filters=""):
+    url = f"{SB_URL}/rest/v1/{table}?{filters}"
+    r = requests.get(url, headers=SB_HEADERS, timeout=10)
+    return r.json() if r.ok else []
+
+def sb_insert(table, data):
+    url = f"{SB_URL}/rest/v1/{table}"
+    r = requests.post(url, headers=SB_HEADERS, json=data, timeout=10)
+    return r.json() if r.ok else []
+
+def sb_delete(table, filters):
+    url = f"{SB_URL}/rest/v1/{table}?{filters}"
+    r = requests.delete(url, headers=SB_HEADERS, timeout=10)
+    return r.ok
+
+def sb_upsert(table, data, on_conflict):
+    url = f"{SB_URL}/rest/v1/{table}?on_conflict={on_conflict}"
+    headers = {**SB_HEADERS, "Prefer": "resolution=merge-duplicates,return=representation"}
+    r = requests.post(url, headers=headers, json=data, timeout=10)
+    return r.json() if r.ok else []
+
+# ── Email ──────────────────────────────────────────────────────
 def send_email_code(target_email, code):
     try:
         msg = MIMEMultipart()
@@ -37,6 +64,7 @@ def send_email_code(target_email, code):
         print(f"Email error: {e}")
         return False
 
+# ── Маршрути ───────────────────────────────────────────────────
 @app.route('/')
 def index():
     return send_from_directory('../static', 'sitr.html')
@@ -49,19 +77,15 @@ def ai_helper():
 def static_files(filename):
     return send_from_directory('../static', filename)
 
-@app.route('/uploads/<filename>')
-def uploads(filename):
-    return send_from_directory('../static/uploads', filename)
-
 @app.route('/api/products', methods=['GET'])
 def get_products():
     try:
-        result = sb.table('products').select('*').eq('active', True).execute()
+        rows = sb_select('products', 'active=eq.true&select=*')
         products = []
-        for row in result.data:
+        for row in rows:
             products.append({
-                'name':   row['name'],
-                'price':  row['price'],
+                'name':   row.get('name', ''),
+                'price':  row.get('price', 0),
                 'desc':   row.get('description', ''),
                 'cat':    row.get('category', ''),
                 'sizes':  row.get('sizes', []),
@@ -80,12 +104,12 @@ def send_auth_code():
     contact = data.get('contact', '').strip()
     if not contact:
         return jsonify({"success": False, "message": "Вкажіть контакт"}), 400
+
     code = str(random.randint(1000, 9999))
-    try:
-        sb.table('auth_codes').delete().eq('contact', contact).execute()
-        sb.table('auth_codes').insert({'contact': contact, 'code': code}).execute()
-    except Exception as e:
-        print(f"Auth codes error: {e}")
+
+    sb_delete('auth_codes', f'contact=eq.{contact}')
+    sb_insert('auth_codes', {'contact': contact, 'code': code})
+
     if "@" in contact:
         if send_email_code(contact, code):
             return jsonify({"success": True})
@@ -96,7 +120,7 @@ def send_auth_code():
             msg = f"🔑 Код LUNXET: <b>{code}</b>\n👤 {contact}"
             requests.post(url, json={"chat_id": ADMIN_ID, "text": msg, "parse_mode": "HTML"}, timeout=5)
             return jsonify({"success": True})
-        except:
+        except Exception as e:
             return jsonify({"success": False, "message": "Помилка Telegram"}), 500
 
 @app.route('/api/auth/verify', methods=['POST', 'OPTIONS'])
@@ -106,11 +130,12 @@ def verify_auth_code():
     data    = request.json or {}
     contact = data.get('contact', '').strip()
     code    = data.get('code', '').strip()
+
     try:
-        result = sb.table('auth_codes').select('*').eq('contact', contact).eq('code', code).execute()
-        if result.data:
-            sb.table('auth_codes').delete().eq('contact', contact).execute()
-            sb.table('users').upsert({'contact': contact}, on_conflict='contact').execute()
+        rows = sb_select('auth_codes', f'contact=eq.{contact}&code=eq.{code}')
+        if rows:
+            sb_delete('auth_codes', f'contact=eq.{contact}')
+            sb_upsert('users', {'contact': contact}, 'contact')
             return jsonify({"success": True})
         return jsonify({"success": False, "message": "Невірний код"}), 401
     except Exception as e:
@@ -129,14 +154,13 @@ def generate_look():
         style       = data.get('style', 'casual')
         outfit_type = data.get('outfit_type', 'full outfit')
 
-        products_res = sb.table('products').select('name, category').eq('active', True).execute()
-        products     = products_res.data or []
-        inventory    = ", ".join([p['name'] for p in products])
+        rows      = sb_select('products', 'active=eq.true&select=name,category')
+        inventory = ", ".join([r.get('name', '') for r in rows])
 
         prompt = f"""Ти стиліст магазину LUNXET.
 Клієнт: стать={gender}, зріст={height}см, волосся={hair}, стиль={style}.
 Запит: {outfit_type}. Товари: {inventory}.
-Відповідь ТІЛЬКИ JSON без зайвого тексту:
+Відповідь ТІЛЬКИ JSON:
 {{"items":["назва"],"visual_prompt":"fashion photo prompt english","advice":"порада українською"}}"""
 
         resp = requests.post(
@@ -162,19 +186,19 @@ def create_order():
     data     = request.json or {}
     order_id = str(random.randint(10000, 99999))
     try:
-        sb.table('orders').insert({
+        sb_insert('orders', {
             'order_uid':    order_id,
             'user_contact': data.get('user', 'guest'),
             'items':        data.get('items', []),
             'total':        data.get('total', 0),
             'address':      data.get('address', '')
-        }).execute()
+        })
     except Exception as e:
         print(f"Orders error: {e}")
     try:
-        items = data.get('items', [])
+        items      = data.get('items', [])
         items_text = "\n".join([f"• {i.get('name','?')} — {i.get('price',0)} ₴" for i in items])
-        msg = f"🛒 <b>Замовлення #{order_id}</b>\n👤 {data.get('user','guest')}\n{items_text}\n💰 {data.get('total',0)} ₴\n📍 {data.get('address','')}"
+        msg        = f"🛒 <b>Замовлення #{order_id}</b>\n👤 {data.get('user','guest')}\n{items_text}\n💰 {data.get('total',0)} ₴\n📍 {data.get('address','')}"
         requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
             json={"chat_id": ADMIN_ID, "text": msg, "parse_mode": "HTML"}, timeout=5)
     except:
