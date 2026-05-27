@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Stylist - LUNXET MART</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <style>
+        :root { 
+            --main: #cdef2e; 
+            --dark: #0e0e10; 
+            --gray: rgba(26, 26, 26, 0.8);
+        }
+
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background-color: var(--dark);
+            font-family: 'Inter', sans-serif; color: #fff;
+            overflow-x: hidden;
+        }
+
+        #bg-canvas-container {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 0; pointer-events: none;
+        }
+
+        .dot-grid__canvas { width: 100%; height: 100%; display: block; }
+
+        .container { 
+            max-width: 600px; margin: 80px auto 40px auto;
+            position: relative; z-index: 1; padding: 20px;
+        }
+        
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { color: var(--main); text-transform: uppercase; letter-spacing: 2px; }
+
+        .section { 
+            background: var(--gray); padding: 20px; border-radius: 20px; 
+            margin-bottom: 20px; border: 1px solid rgba(255, 255, 255, 0.1); 
+            backdrop-filter: blur(10px);
+        }
+
+        h3 { margin-top: 0; color: var(--main); font-size: 14px; text-transform: uppercase; margin-bottom: 15px; }
+
+        .input-group { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        input, select { 
+            background: #222; border: 1px solid #444; color: #fff; padding: 12px; 
+            border-radius: 10px; outline: none; width: 100%; box-sizing: border-box;
+        }
+
+        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .opt-card { 
+            background: #222; padding: 12px; border-radius: 12px; cursor: pointer; 
+            display: flex; align-items: center; gap: 10px; border: 1px solid transparent; 
+        }
+
+        .btn-gen { 
+            background: var(--main); color: #000; border: none; width: 100%; 
+            padding: 20px; border-radius: 15px; font-weight: 900; font-size: 18px; cursor: pointer;
+            transition: 0.3s;
+        }
+        .btn-gen:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(205, 239, 46, 0.4); }
+        .btn-gen:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .btn-back {
+            position: fixed; top: 20px; left: 20px; z-index: 100;
+            display: flex; align-items: center; gap: 8px;
+            text-decoration: none; background: rgba(0,0,0,0.5); color: #fff;
+            padding: 10px 15px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.1);
+            font-size: 12px; font-weight: 600; text-transform: uppercase;
+            transition: 0.3s; backdrop-filter: blur(5px);
+        }
+        .btn-back:hover { background: rgba(205, 239, 46, 0.1); border-color: var(--main); color: var(--main); }
+
+        #result-area { display: none; margin-top: 30px; animation: fadeIn 0.5s; }
+        .ai-image { width: 100%; border-radius: 20px; border: 2px solid var(--main); margin-bottom: 20px; }
+        .info-box { background: #fff; color: #000; padding: 20px; border-radius: 15px; text-align: left; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ── НОВЕ: Auth gate ── */
+        #auth-gate {
+            display: none;
+            background: var(--gray);
+            border: 1px solid rgba(205, 239, 46, 0.2);
+            border-radius: 20px;
+            padding: 40px 30px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            margin-bottom: 20px;
+        }
+        #auth-gate i { font-size: 50px; color: var(--main); margin-bottom: 15px; display: block; }
+        #auth-gate h2 { margin: 0 0 10px 0; font-size: 22px; }
+        #auth-gate p { color: #aaa; font-size: 14px; line-height: 1.6; margin-bottom: 25px; }
+        .btn-login {
+            background: var(--main); color: #000; border: none;
+            padding: 15px 35px; border-radius: 14px;
+            font-weight: 900; font-size: 16px; cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-login:hover { transform: translateY(-2px); }
+
+        /* ── НОВЕ: Auth form inline ── */
+        #auth-form-block {
+            display: none;
+            background: var(--gray);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            margin-bottom: 20px;
+        }
+        #auth-form-block h3 { font-size: 18px; text-transform: none; margin-bottom: 20px; color: #fff; }
+        #auth-form-block h3 span { color: var(--main); }
+        .auth-inp {
+            width: 100%; background: #1a1a1a; border: 1px solid #444; color: #fff;
+            padding: 14px; border-radius: 12px; font-size: 15px; outline: none;
+            box-sizing: border-box; margin-bottom: 12px;
+            transition: border-color 0.2s;
+        }
+        .auth-inp:focus { border-color: var(--main); }
+        #code-row { display: none; }
+        .auth-err { color: #ff5555; font-size: 13px; margin-top: 8px; min-height: 18px; }
+
+        /* ── НОВЕ: Limit bar ── */
+        #limit-bar {
+            display: none;
+            background: var(--gray);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 14px;
+            padding: 14px 18px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .limit-text { font-size: 13px; color: #aaa; }
+        .limit-text b { color: #fff; }
+        .limit-dots { display: flex; gap: 7px; }
+        .ldot {
+            width: 16px; height: 16px; border-radius: 50%;
+            background: #333; transition: background 0.3s;
+        }
+        .ldot.on { background: var(--main); }
+
+        #limit-warn {
+            display: none;
+            background: rgba(255,70,70,0.1);
+            border: 1px solid rgba(255,70,70,0.3);
+            border-radius: 14px;
+            padding: 16px 20px;
+            text-align: center;
+            color: #ff7777;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        /* ── НОВЕ: user info рядок ── */
+        #user-row {
+            display: none;
+            background: rgba(205,239,46,0.08);
+            border: 1px solid rgba(205,239,46,0.2);
+            border-radius: 12px;
+            padding: 10px 16px;
+            margin-bottom: 16px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        #user-row span { color: var(--main); font-weight: 700; }
+        #user-row button {
+            background: none; border: 1px solid #444; color: #aaa;
+            padding: 4px 12px; border-radius: 8px; font-size: 12px; cursor: pointer;
+        }
+        #user-row button:hover { border-color: #ff5555; color: #ff5555; }
+    </style>
+</head>
+<body>
+
+<a href="/" class="btn-back">
+    <i class="fas fa-chevron-left"></i> ПОВЕРНУТИСЯ
+</a>
+
+<div id="bg-canvas-container">
+    <canvas class="dot-grid__canvas" id="dotCanvas"></canvas>
+</div>
+
+<div class="container">
+    <div class="header">
+        <h1>LUNXET AI</h1>
+        <p>Персональний підбір образу</p>
+    </div>
+
+    <!-- Рядок з поточним юзером (якщо увійшов) -->
+    <div id="user-row">
+        <div>Увійшли як: <span id="user-contact-text"></span></div>
+        <button onclick="logoutAI()">Вийти</button>
+    </div>
+
+    <!-- БЛОК 1: Заглушка "потрібна авторизація" -->
+    <div id="auth-gate">
+        <i class="fas fa-lock"></i>
+        <h2>Потрібна авторизація</h2>
+        <p>AI-стиліст доступний тільки для зареєстрованих користувачів.<br>Реєстрація безкоштовна — просто введіть email або телефон.</p>
+        <button class="btn-login" onclick="showAuthForm()">
+            <i class="fas fa-user" style="margin-right:8px;"></i>Увійти / Зареєструватися
+        </button>
+    </div>
+
+    <!-- БЛОК 2: Форма авторизації (вбудована в сторінку) -->
+    <div id="auth-form-block">
+        <h3>Вхід в <span>LUNXET</span></h3>
+        <div id="step1-ai">
+            <input class="auth-inp" id="ai-contact" type="text" placeholder="Email або +380XXXXXXXXX">
+            <button class="btn-gen" id="ai-send-btn" onclick="aiSendCode()" style="padding:14px; font-size:15px;">
+                Надіслати код
+            </button>
+            <div class="auth-err" id="ai-err1"></div>
+        </div>
+        <div id="step2-ai" style="display:none;">
+            <p style="color:#aaa; font-size:13px; margin-bottom:12px;" id="ai-code-hint"></p>
+            <input class="auth-inp" id="ai-code" type="text" maxlength="4" placeholder="0000" 
+                   style="text-align:center; font-size:28px; letter-spacing:10px;">
+            <button class="btn-gen" id="ai-verify-btn" onclick="aiVerifyCode()" style="padding:14px; font-size:15px;">
+                Підтвердити
+            </button>
+            <div class="auth-err" id="ai-err2"></div>
+            <p style="text-align:center; margin-top:12px; font-size:13px; color:#666; cursor:pointer;" 
+               onclick="aiResetForm()">← Назад</p>
+        </div>
+    </div>
+
+    <!-- БЛОК 3: Лічильник генерацій (показується після входу) -->
+    <div id="limit-bar">
+        <div class="limit-text">Генерацій сьогодні: <b id="used-count">0</b> / <b>3</b></div>
+        <div class="limit-dots">
+            <div class="ldot" id="d1"></div>
+            <div class="ldot" id="d2"></div>
+            <div class="ldot" id="d3"></div>
+        </div>
+    </div>
+
+    <!-- Попередження ліміт вичерпано -->
+    <div id="limit-warn">
+        <i class="fas fa-clock" style="margin-right:8px;"></i>
+        Ліміт 3 генерації на день вичерпано. Повертайтесь завтра!
+    </div>
+
+    <!-- ОСНОВНА ФОРМА (та сама, що й була) -->
+    <div id="main-form" style="display:none;">
+        <div class="section">
+            <h3>1. Твої дані</h3>
+            <div class="input-group">
+                <select id="gender">
+                    <option value="female">Жінка</option>
+                    <option value="male">Чоловік</option>
+                </select>
+                <input type="number" id="height" placeholder="Зріст (см)">
+                <select id="hair">
+                    <option value="blonde">Блонд</option>
+                    <option value="brunette">Брюнет</option>
+                    <option value="black">Чорний</option>
+                    <option value="red">Рудий</option>
+                </select>
+                <select id="style">
+                    <option value="casual">Casual</option>
+                    <option value="streetwear">Streetwear</option>
+                    <option value="formal">Formal</option>
+                    <option value="sporty">Sporty</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>2. Що шукаємо?</h3>
+            <div class="options-grid">
+                <label class="opt-card">
+                    <input type="radio" name="outfit_type" value="full outfit" checked> Повний образ
+                </label>
+                <label class="opt-card">
+                    <input type="radio" name="outfit_type" value="top"> Верх (кофти, куртки)
+                </label>
+                <label class="opt-card">
+                    <input type="radio" name="outfit_type" value="bottom"> Низ (штани, взуття)
+                </label>
+            </div>
+        </div>
+
+        <button class="btn-gen" id="genBtn" onclick="startGeneration()">ЗГЕНЕРУВАТИ ОБРАЗ</button>
+
+        <div id="result-area">
+            <h3>Твій Look:</h3>
+            <img id="res-img" class="ai-image" src="" alt="AI Look">
+            <div class="info-box">
+                <h4>Використані товари:</h4>
+                <ul id="res-items"></ul>
+                <hr>
+                <p id="res-advice" style="font-style: italic;"></p>
+            </div>
+        </div>
+    </div><!-- /main-form -->
+
+</div><!-- /container -->
+
+<script>
+// ─────────────────────────────────────────
+//  СТАН
+// ─────────────────────────────────────────
+const API = window.location.origin + '/api';
+
+// Юзер береться з localStorage (той самий що в sitr.html)
+let currentUser = localStorage.getItem('user') || null;
+
+// Генерації в день зберігаємо локально (дата + лічильник)
+const TODAY = new Date().toISOString().split('T')[0]; // "2025-05-27"
+let aiUsage = JSON.parse(localStorage.getItem('ai_usage') || '{}');
+// Якщо нова дата — скидаємо лічильник
+if (aiUsage.date !== TODAY) {
+    aiUsage = { date: TODAY, count: 0 };
+    localStorage.setItem('ai_usage', JSON.stringify(aiUsage));
+}
+const MAX_GEN = 3;
+
+// ─────────────────────────────────────────
+//  INIT: вирішуємо що показати
+// ─────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+    if (currentUser) {
+        showMainUI();
+    } else {
+        document.getElementById('auth-gate').style.display = 'block';
+    }
+});
+
+function showMainUI() {
+    // Ховаємо auth блоки
+    document.getElementById('auth-gate').style.display    = 'none';
+    document.getElementById('auth-form-block').style.display = 'none';
+
+    // Показуємо рядок юзера
+    const row = document.getElementById('user-row');
+    row.style.display = 'flex';
+    document.getElementById('user-contact-text').textContent = currentUser;
+
+    // Оновлюємо лічильник
+    updateLimitUI();
+
+    // Показуємо форму тільки якщо є ще генерації
+    if (aiUsage.count < MAX_GEN) {
+        document.getElementById('main-form').style.display = 'block';
+        document.getElementById('limit-bar').style.display = 'flex';
+    } else {
+        document.getElementById('limit-warn').style.display = 'block';
+        document.getElementById('limit-bar').style.display = 'flex';
+    }
+}
+
+function updateLimitUI() {
+    const used = aiUsage.count;
+    document.getElementById('used-count').textContent = used;
+    for (let i = 1; i <= 3; i++) {
+        document.getElementById('d' + i).classList.toggle('on', i <= used);
+    }
+}
+
+// ─────────────────────────────────────────
+//  AUTH (використовує той самий API що sitr.html)
+// ─────────────────────────────────────────
+function showAuthForm() {
+    document.getElementById('auth-gate').style.display = 'none';
+    document.getElementById('auth-form-block').style.display = 'block';
+}
+
+function aiResetForm() {
+    document.getElementById('step1-ai').style.display = 'block';
+    document.getElementById('step2-ai').style.display = 'none';
+    document.getElementById('ai-contact').value = '';
+    document.getElementById('ai-code').value = '';
+    document.getElementById('ai-err1').textContent = '';
+    document.getElementById('ai-err2').textContent = '';
+}
+
+async function aiSendCode() {
+    const contact = document.getElementById('ai-contact').value.trim();
+    if (!contact) return;
+
+    const btn = document.getElementById('ai-send-btn');
+    btn.disabled = true;
+    btn.textContent = 'Надсилаємо…';
+    document.getElementById('ai-err1').textContent = '';
+
+    try {
+        const res = await fetch(`${API}/auth/request`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contact })
+        });
+        const data = await res.json();
+        if (data.success) {
+            document.getElementById('step1-ai').style.display = 'none';
+            document.getElementById('step2-ai').style.display  = 'block';
+            document.getElementById('ai-code-hint').textContent = `Код надіслано на ${contact}`;
+        } else {
+            document.getElementById('ai-err1').textContent = data.message || 'Помилка відправки';
+        }
+    } catch {
+        document.getElementById('ai-err1').textContent = 'Помилка зʼєднання з сервером';
+    }
+    btn.disabled = false;
+    btn.textContent = 'Надіслати код';
+}
+
+async function aiVerifyCode() {
+    const contact = document.getElementById('ai-contact').value.trim();
+    const code    = document.getElementById('ai-code').value.trim();
+    if (!code) return;
+
+    const btn = document.getElementById('ai-verify-btn');
+    btn.disabled = true;
+    btn.textContent = 'Перевіряємо…';
+    document.getElementById('ai-err2').textContent = '';
+
+    try {
+        const res = await fetch(`${API}/auth/verify`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contact, code })
+        });
+        const data = await res.json();
+        if (data.success) {
+            // Зберігаємо так само як sitr.html
+            localStorage.setItem('user', contact);
+            currentUser = contact;
+            showMainUI();
+        } else {
+            document.getElementById('ai-err2').textContent = data.message || 'Невірний код';
+        }
+    } catch {
+        document.getElementById('ai-err2').textContent = 'Помилка зʼєднання';
+    }
+    btn.disabled = false;
+    btn.textContent = 'Підтвердити';
+}
+
+function logoutAI() {
+    localStorage.removeItem('user');
+    location.reload();
+}
+
+// ─────────────────────────────────────────
+//  ГЕНЕРАЦІЯ (той самий код що був + ліміт)
+// ─────────────────────────────────────────
+async function startGeneration() {
+    // Перевірка ліміту
+    if (aiUsage.count >= MAX_GEN) {
+        document.getElementById('limit-warn').style.display = 'block';
+        document.getElementById('main-form').style.display = 'none';
+        return;
+    }
+
+    const btn = document.getElementById('genBtn');
+    const h = document.getElementById('height').value;
+    if (!h) return alert("Вкажіть зріст!");
+
+    btn.innerText = "ШІ ДУМАЄ...";
+    btn.disabled = true;
+
+    try {
+        const res = await fetch(`${API}/generate-look`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                gender:      document.getElementById('gender').value,
+                height:      h,
+                hair:        document.getElementById('hair').value,
+                style:       document.getElementById('style').value,
+                outfit_type: document.querySelector('input[name="outfit_type"]:checked').value,
+                contact:     currentUser   // передаємо для server-side логіки
+            })
+        });
+        const data = await res.json();
+
+        // Збільшуємо лічильник локально
+        aiUsage.count++;
+        localStorage.setItem('ai_usage', JSON.stringify(aiUsage));
+        updateLimitUI();
+
+        // Показуємо результат
+        document.getElementById('result-area').style.display = 'block';
+        document.getElementById('res-img').src = data.image_url || 
+            `https://image.pollinations.ai/prompt/${encodeURIComponent(data.visual_prompt)}?width=512&height=640&nologo=true`;
+        document.getElementById('res-items').innerHTML = 
+            data.items?.map(i => `<li><b>${i}</b></li>`).join('') || "<li>Підбір товарів...</li>";
+        document.getElementById('res-advice').innerText = data.advice || "";
+
+        // Якщо вичерпали — блокуємо кнопку
+        if (aiUsage.count >= MAX_GEN) {
+            btn.innerText = "ЛІМІТ ВИЧЕРПАНО";
+            btn.disabled = true;
+        } else {
+            btn.innerText = "ЗГЕНЕРУВАТИ ЩЕ РАЗ";
+            btn.disabled = false;
+        }
+
+    } catch (e) {
+        alert("Помилка зв'язку.");
+        btn.innerText = "СПРОБУВАТИ ЩЕ РАЗ";
+        btn.disabled = false;
+    }
+}
+
+// ─────────────────────────────────────────
+//  DOT GRID (без змін — той самий код)
+// ─────────────────────────────────────────
+const config = {
+    dotSize: 4, gap: 20, baseColor: "#2F293A", activeColor: "#cdef2e",
+    proximity: 120, speedTrigger: 100, returnDuration: 1.5
+};
+const canvas = document.getElementById('dotCanvas');
+const ctx = canvas.getContext('2d');
+let dots = [];
+let pointer = { x: -1000, y: -1000, lastX: 0, lastY: 0, lastTime: 0 };
+
+function buildGrid() {
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = window.innerWidth * dpr;
+    canvas.height = window.innerHeight * dpr;
+    ctx.scale(dpr, dpr);
+    const cell = config.dotSize + config.gap;
+    const cols = Math.ceil(window.innerWidth / cell) + 1;
+    const rows = Math.ceil(window.innerHeight / cell) + 1;
+    dots = [];
+    for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+            dots.push({ cx: x * cell, cy: y * cell, xOffset: 0, yOffset: 0 });
+        }
+    }
+}
+
+function draw() {
+    ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+    dots.forEach(dot => {
+        const dx = dot.cx - pointer.x;
+        const dy = dot.cy - pointer.y;
+        const dsq = dx * dx + dy * dy;
+        ctx.beginPath();
+        ctx.arc(dot.cx + dot.xOffset, dot.cy + dot.yOffset, config.dotSize / 2, 0, Math.PI * 2);
+        ctx.fillStyle = dsq < (config.proximity ** 2) ? config.activeColor : config.baseColor;
+        ctx.fill();
+    });
+    requestAnimationFrame(draw);
+}
+
+window.addEventListener('mousemove', (e) => {
+    const now = performance.now();
+    const curX = e.clientX, curY = e.clientY;
+    pointer.x = curX; pointer.y = curY;
+    const dt = now - pointer.lastTime || 16;
+    const vx = ((curX - pointer.lastX) / dt) * 1000;
+    const vy = ((curY - pointer.lastY) / dt) * 1000;
+    if (Math.hypot(vx, vy) > config.speedTrigger) {
+        dots.forEach(dot => {
+            if (Math.hypot(dot.cx - curX, dot.cy - curY) < config.proximity) {
+                gsap.killTweensOf(dot);
+                gsap.to(dot, {
+                    xOffset: (dot.cx - curX) * 0.4, yOffset: (dot.cy - curY) * 0.4,
+                    duration: 0.3, onComplete: () => {
+                        gsap.to(dot, { xOffset: 0, yOffset: 0, duration: config.returnDuration, ease: "elastic.out(1, 0.6)" });
+                    }
+                });
+            }
+        });
+    }
+    pointer.lastX = curX; pointer.lastY = curY; pointer.lastTime = now;
+});
+
+window.addEventListener('resize', buildGrid);
+buildGrid(); draw();
+</script>
+</body>
+</html>
