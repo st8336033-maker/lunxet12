@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LUNXET MART</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root { --main: #cdef2e; --bg: #f8f8f8; --dark: #111; --sale: #ff4747; }
+        body { font-family: 'Inter', sans-serif; margin: 0; background: var(--bg); color: var(--dark); padding-bottom: 70px; overflow-x: hidden; }
+        header { background: #000; color: #fff; padding: 12px 5%; display: flex; justify-content: space-between; align-items: center; position: sticky; top:0; z-index: 1000; }
+
+        /* Стилі для нової кнопки AI */
+        .ai-header-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(205, 239, 46, 0.15);
+            color: var(--main);
+            padding: 5px 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: 0.2s;
+            border: 1px solid rgba(205, 239, 46, 0.3);
+            margin-left: 15px;
+        }
+        .ai-header-btn:hover { background: var(--main); color: #000; }
+        .ai-header-btn i { font-size: 16px; }
+        .ai-header-btn span { font-size: 12px; font-weight: 800; text-transform: uppercase; }
+
+        .grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); 
+            gap: 20px; 
+            padding: 20px 5%; 
+        }
+        .card { background: #fff; border-radius: 18px; overflow: hidden; position: relative; box-shadow: 0 6px 15px rgba(0,0,0,0.06); cursor: pointer; transition: 0.2s; }
+        .card img { width: 100%; height: 220px; object-fit: cover; background: #eee; }
+
+        .slider-container { position: relative; width: 100%; height: 350px; border-radius: 15px; overflow: hidden; background: #f0f0f0; display: flex; align-items: center; }
+        .slider-container img { width: 100%; height: 100%; object-fit: contain; }
+        .nav-arrow { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.5); color: white; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; z-index: 5; display: none; }
+        .nav-arrow.visible { display: block; }
+        .arrow-left { left: 10px; }
+        .arrow-right { right: 10px; }
+
+        .size-chip { 
+            padding: 10px 15px; 
+            border: 1px solid #ddd; 
+            border-radius: 10px; 
+            cursor: pointer; 
+            font-weight: bold;
+            background: #fff;
+            transition: 0.2s;
+            min-width: 45px;
+            text-align: center;
+        }
+        .size-chip.active { background: var(--main); border-color: var(--main); color: #000; }
+
+        .sidebar { position: fixed; left: -280px; top: 0; width: 280px; height: 100%; background: #fff; z-index: 3000; transition: 0.3s; padding: 20px; box-sizing: border-box; }
+        .sidebar.open { left: 0; }
+        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2500; }
+        .top-nav-cats { background: #fff; display: flex; gap: 10px; padding: 10px 5%; overflow-x: auto; border-bottom: 1px solid #ddd; position: sticky; top: 54px; z-index: 900; }
+        .chip { padding: 8px 18px; background: #eee; border-radius: 20px; font-size: 13px; white-space: nowrap; cursor: pointer; border: none; }
+        .chip.active { background: var(--main); font-weight: bold; }
+        
+/* Ефект розмитого скла для панелі категорій */
+        .top-nav-cats { 
+            background: rgba(255, 255, 255, 0.7); 
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            display: flex; 
+            gap: 10px; 
+            padding: 10px 5%; 
+            overflow-x: auto; 
+            border-bottom: 1px solid rgba(0,0,0,0.05); 
+            position: sticky; 
+            top: 54px; 
+            z-index: 900; 
+        }
+        .chip { padding: 8px 18px; background: rgba(0,0,0,0.05); border-radius: 20px; font-size: 13px; white-space: nowrap; cursor: pointer; border: none; }
+        .chip.active { background: var(--main); font-weight: bold; }
+
+        /* Світла бокова панель у стилі твого сайту */
+        .sidebar { 
+            position: fixed; 
+            left: -280px; 
+            top: 0; 
+            width: 280px; 
+            height: 100%; 
+            background: #ffffff; 
+            z-index: 3000; 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            box-sizing: border-box; 
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #eee; 
+        }
+
+        .sidebar.open { 
+            left: 0; 
+            box-shadow: 15px 0 40px rgba(0,0,0,0.08); 
+        }
+
+        .sidebar-header {
+            padding: 25px 20px;
+            background: #fcfcfc;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            padding: 14px 20px;
+            color: #555; 
+            text-decoration: none;
+            cursor: pointer;
+            transition: 0.2s;
+            font-size: 15px;
+            gap: 15px;
+        }
+
+        .menu-item:hover {
+            background: #f5f5f5;
+            color: #000;
+        }
+
+        .menu-item i {
+            width: 20px;
+            text-align: center;
+            font-size: 18px;
+            color: #888; 
+        }
+
+        .menu-item.active {
+            color: #000;
+            font-weight: 700;
+            background: rgba(205, 239, 46, 0.1); 
+            border-left: 4px solid var(--main);
+        }
+
+        .menu-item.active i { color: #000; }
+        #sub-menu { background: #fafafa; }
+
+        .sub-item {
+            padding: 10px 20px 10px 55px;
+            color: #777;
+            font-size: 14px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .sub-item:hover { 
+            color: var(--dark);
+            background: #f0f0f0;
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+            padding: 20px;
+            border-top: 1px solid #f0f0f0;
+        }
+
+        .modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.85); z-index: 4000; justify-content: center; align-items: center; }
+        .modal-content { background: #fff; width: 95%; max-width: 500px; border-radius: 25px; padding: 25px; box-sizing: border-box; max-height: 90vh; overflow-y: auto; }
+        .action-btn { background: var(--main); border: none; padding: 16px; border-radius: 14px; font-weight: bold; width: 100%; cursor: pointer; margin-top: 15px; font-size: 16px; }
+        .auth-input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; margin-bottom: 10px; box-sizing: border-box; }
+
+        .bottom-bar { position: fixed; bottom: 0; width: 100%; background: #fff; display: flex; border-top: 1px solid #eee; padding: 10px 0; z-index: 1000; }
+        .bar-item { flex: 1; text-align: center; color: #888; cursor: pointer; font-size: 11px; }
+        .bar-item i { font-size: 20px; display: block; margin-bottom: 3px; }
+
+        .info-footer { background: #1a1a1a; color: #fff; padding: 40px 5%; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 30px; margin-top: 40px; }
+        .info-footer h4 { color: var(--main); margin-bottom: 15px; }
+        .info-footer a { color: #ccc; text-decoration: none; display: block; margin-bottom: 10px; font-size: 14px; cursor: pointer; }
+        
+        #game-canvas { width: 100%; height: 400px; background: #000; border-radius: 15px; position: relative; overflow: hidden; }
+        .game-item { position: absolute; font-size: 35px; cursor: pointer; }
+
+        .header-right { 
+            display: flex; 
+            align-items: center; 
+            gap: 18px; 
+        }
+
+        /* Поле пошуку прямо у шапці сайту */
+        .search-box {
+            position: relative;
+            background: #1a1a1a;
+            border-radius: 20px;
+            padding: 6px 12px 6px 35px;
+            display: flex;
+            align-items: center;
+            border: 1px solid #333;
+            max-width: 180px;
+        }
+        .search-box input {
+            background: none;
+            border: none;
+            color: #fff;
+            outline: none;
+            font-size: 13px;
+            width: 100%;
+        }
+        .search-box .search-icon {
+            position: absolute;
+            left: 12px;
+            color: #888;
+            font-size: 14px;
+        }
+
+        .lang-box { position: relative; cursor: pointer; font-size: 13px; color: var(--main); font-weight: 800; }
+        .lang-dropdown { 
+            display: none; position: absolute; top: 25px; right: 0; 
+            background: #fff; color: #000; border-radius: 8px; width: 120px; z-index: 2000; box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .lang-dropdown div { padding: 10px; border-bottom: 1px solid #eee; transition: 0.2s; }
+        .lang-dropdown div:hover { background: #f5f5f5; }
+
+        .icon-btn { font-size: 20px; color: #fff; cursor: pointer; position: relative; }
+        .icon-btn:hover { color: var(--main); }
+
+        .bottom-bar { display: none !important; }
+        body { padding-bottom: 0 !important; }
+
+        .fav-btn { 
+            position: absolute; top: 10px; right: 10px; 
+            background: rgba(255,255,255,0.7); width: 30px; height: 30px; 
+            border-radius: 50%; display: flex; align-items: center; justify-content: center; 
+        }
+        .fav-btn.active { color: #ff4747; }
+
+        /* Стилі для красивого кастомного сповіщення (Toast) */
+        .custom-toast {
+            position: fixed;
+            top: -100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #161616;
+            color: #fff;
+            padding: 14px 24px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            transition: top 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 99999;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: 'Inter', sans-serif;
+            border: 1px solid #2d2d2d;
+            border-bottom: 3px solid var(--main);
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .custom-toast.show { top: 25px; }
+        .custom-toast i { color: var(--main); font-size: 16px; }
+
+        @media(max-width: 500px) {
+            .search-box { max-width: 100px; padding-left: 28px; }
+            .search-box .search-icon { left: 8px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="overlay" id="overlay" onclick="toggleMenu()"></div>
+
+<div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <p style="font-size: 10px; color: #aaa; margin: 0; letter-spacing: 1px; font-weight: bold;">LUNXET MART</p>
+                <p style="font-weight: 900; margin: 0; font-size: 18px; color: var(--dark);" data-lang="menu_title">МЕНЮ</p>
+            </div>
+            <button onclick="toggleMenu()" style="background:none; border:none; color:#ccc; cursor:pointer; font-size: 20px;">✕</button>
+        </div>
+    </div>
+    
+    <nav style="padding-top: 10px;">
+        <div class="menu-item" onclick="toggleMenu(); location.reload();">
+            <i class="fas fa-home"></i> <span data-lang="home">Головна</span>
+        </div>
+
+        <div class="menu-item" onclick="window.location.href='/ai-helper'">
+            <i class="fas fa-robot"></i> <span data-lang="ai">AI Стиліст</span>
+        </div>
+
+        <div class="menu-item" onclick="openGame(); toggleMenu();">
+            <i class="fas fa-gamepad"></i> <span data-lang="game">Бонусна гра</span>
+        </div>
+
+        <div class="menu-item" onclick="toggleSub()">
+            <i class="fas fa-layer-group"></i> <span data-lang="cats">Категорії</span>
+            <i class="fas fa-chevron-down" style="font-size: 10px; margin-left: auto;"></i>
+        </div>
+        
+        <div id="sub-menu" style="display:none;">
+            <div class="sub-item" onclick="filterBy('Всі'); toggleMenu();" data-lang="all_goods">Всі товари</div>
+            <div class="sub-item" onclick="filterBy('куртки'); toggleMenu();" data-lang="outer">Верхній одяг</div>
+            <div class="sub-item" onclick="filterBy('кофти'); toggleMenu();" data-lang="sweaters">Кофти</div>
+            <div class="sub-item" onclick="filterBy('штани'); toggleMenu();" data-lang="pants">Штани</div>
+        </div>
+
+        <div class="menu-item" onclick="openSection('history'); toggleMenu();">
+            <i class="fas fa-shopping-bag"></i> <span data-lang="orders">Мої замовлення</span>
+        </div>
+
+        <div class="menu-item" onclick="openProfile(); toggleMenu();">
+            <i class="fas fa-user-circle"></i> <span data-lang="profile">Профіль</span>
+        </div>
+    </nav>
+
+    <div class="sidebar-footer">
+        <button class="action-btn" style="margin:0; padding: 12px; font-size: 13px;" onclick="window.open('https://t.me/LuxeMartShopBot')">
+            <i class="fas fa-headset" style="margin-right: 8px;"></i> <span data-lang="support">Підтримка 24/7</span>
+        </button>
+    </div>
+</div>
+
+<header>
+    <div style="display: flex; align-items: center; gap: 12px;">
+        <div onclick="toggleMenu()" style="cursor: pointer; font-size: 18px;"><i class="fas fa-bars"></i></div>
+        <div style="font-weight: 900; font-size: 20px; letter-spacing: 0.5px;">LUNXET</div>
+        
+        <div class="search-box">
+            <i class="fas fa-search search-icon"></i>
+            <input type="text" id="search-input" placeholder="Пошук..." oninput="handleSearch()">
+        </div>
+    </div>
+
+    <div class="header-right">
+        <div class="lang-box" onclick="toggleLang()">
+            <span id="cur-lang">UA</span> <i class="fas fa-chevron-down" style="font-size: 10px;"></i>
+            <div class="lang-dropdown" id="lang-list">
+                <div onclick="setLang('UA')">Українська</div>
+                <div onclick="setLang('EN')">English</div>
+                <div onclick="setLang('DE')">Deutsch</div>
+            </div>
+        </div>
+
+        
+        <div class="icon-btn" onclick="openSection('cart')">
+            <i class="fas fa-shopping-bag"></i>
+            <span id="cart-count-top" style="position:absolute; top:-8px; right:-8px; background:var(--main); color:#000; font-size:10px; padding:2px 5px; border-radius:50%; font-weight:bold;">0</span>
+        </div>
+
+        <div class="icon-btn" onclick="openProfile()">
+            <i class="far fa-user"></i>
+        </div>
+    </div>
+</header>
+
+<div class="top-nav-cats">
+    <div class="chip active" onclick="filterBy('Всі')" data-lang="all">Всі</div>
+    <div class="chip" onclick="filterBy('куртки')" data-lang="outer">Верхній одяг</div>
+    <div class="chip" onclick="filterBy('кофти')" data-lang="sweaters">Кофти</div>
+    <div class="chip" onclick="filterBy('штани')" data-lang="pants">Штани</div>
+</div>
+
+<div style="padding: 10px 5%; display: flex; align-items: center; gap: 10px;">
+    <span style="font-size: 14px; font-weight: bold;" data-lang="sort">Сортувати:</span>
+    <select id="sort-select" onchange="sortProducts()" style="padding: 8px; border-radius: 10px; border: 1px solid #ddd; outline: none; font-size: 13px;">
+        <option value="default" data-lang="sort_def">За замовчуванням</option>
+        <option value="cheap" data-lang="sort_cheap">Спочатку дешевші</option>
+        <option value="expensive" data-lang="sort_expensive">Спочатку дорожчі</option>
+    </select>
+</div>
+
+<div class="grid" id="products-grid"></div>
+
+<div class="info-footer">
+    <div>
+        <h4 data-lang="f_contact">КОНТАКТ-ЦЕНТР</h4>
+        <b style="font-size: 18px;">097 429 95 51</b>
+        <p style="color:#888; font-size:12px;" data-lang="f_hours">Пн-Пт 9:00 - 22:00</p>
+    </div>
+    <div>
+        <h4 data-lang="f_cabinet">ОСОБИСТИЙ КАБІНЕТ</h4>
+        <a onclick="openSection('history')" data-lang="f_history">Історія замовлень</a>
+        <a onclick="openProfile()" data-lang="f_data">Мої дані</a>
+        <a onclick="openSection('club')" data-lang="f_club">Клубна програма</a>
+    </div>
+    <div>
+        <h4 data-lang="f_buyers">ПОКУПЦЯМ</h4>
+        <a onclick="openSection('delivery')" data-lang="f_deliv">Оплата та доставка</a>
+        <a onclick="openSection('return')" data-lang="f_ret">Повернення</a>
+    </div>
+</div>
+
+<div id="prodModal" class="modal" onclick="if(event.target==this)closeM('prodModal')">
+    <div class="modal-content">
+        <div class="slider-container">
+            <button class="nav-arrow arrow-left" onclick="changePhoto(-1)"><i class="fas fa-chevron-left"></i></button>
+            <img id="m-img" src="">
+            <button class="nav-arrow arrow-right" onclick="changePhoto(1)"><i class="fas fa-chevron-right"></i></button>
+        </div>
+        <h2 id="m-title" style="margin:20px 0 5px 0;"></h2>
+        <b id="m-price" style="font-size:22px;"></b>
+        <p style="margin: 15px 0 5px 0; font-weight: bold; font-size: 14px;" data-lang="choose_size">Оберіть розмір:</p>
+        <div id="m-sizes-container" style="display:flex; gap:10px; flex-wrap: wrap; margin-bottom: 15px;"></div>
+        <p id="m-desc" style="color:#555; font-size:14px; line-height: 1.5;"></p>
+        <button class="action-btn" onclick="addToCart()" data-lang="add_to_cart">ДОДАТИ В КОШИК</button>
+    </div>
+</div>
+
+<div id="authModal" class="modal" onclick="if(event.target==this)closeM('authModal')">
+    <div class="modal-content">
+        <h2 id="auth-title" data-lang="profile">Профіль</h2>
+        <div id="user-info" style="display:none; text-align:center;">
+            <p><span data-lang="login_txt">Логін</span>: <b id="user-display"></b></p>
+            <p><span data-lang="balance_txt">Баланс</span>: <b id="profile-bonuses" style="color:var(--main)">0 ₴</b></p>
+            <button class="action-btn" style="background:#f0f0f0; color:red;" onclick="logout()" data-lang="exit_btn">ВИЙТИ</button>
+        </div>
+        <div id="auth-form-ui">
+            <input type="text" id="auth-input" class="auth-input" placeholder="Email або номер телефону">
+            <div id="auth-code-container" style="display:none;">
+                <p style="font-size:12px; color:#888; margin-bottom:5px;" data-lang="enter_code">Введіть 4-значний код:</p>
+                <input type="text" id="auth-code-input" class="auth-input" placeholder="0000" maxlength="4" style="text-align:center; font-size:20px; letter-spacing:5px;">
+            </div>
+            <button id="auth-btn" class="action-btn" onclick="handleAuth()" data-lang="login_action">УВІЙТИ</button>
+        </div>
+    </div>
+</div>
+
+<div id="gameModal" class="modal">
+    <div class="modal-content">
+        <div class="game-score"><span data-lang="bonuses_txt">Бонуси</span>: <span id="game-res">0.00</span> ₴</div>
+        <div id="game-canvas"></div>
+        <button class="action-btn" onclick="closeGame()" data-lang="save_close">ЗАКРИТИ ТА ЗБЕРЕГТИ</button>
+    </div>
+</div>
+
+<div id="infoModal" class="modal" onclick="if(event.target==this)closeM('infoModal')">
+    <div class="modal-content">
+        <h2 id="info-title"></h2>
+        <div id="info-body"></div>
+        <button class="action-btn" onclick="closeM('infoModal')" data-lang="close_btn">ЗАКРИТИ</button>
+    </div>
+</div>
+
+<div class="bottom-bar">
+    <div class="bar-item" onclick="location.reload()"><i class="fas fa-home"></i>Головна</div>
+    <div class="bar-item" onclick="openGame()"><i class="fas fa-gamepad"></i>Гра</div>
+    <div class="bar-item" onclick="openSection('cart')"><i class="fas fa-shopping-cart"></i>Кошик (<span id="cart-count">0</span>)</div>
+    <div class="bar-item" onclick="openProfile()"><i class="fas fa-user"></i>Профіль</div>
+</div>
+
+<script>
+    const api = window.location.origin + "/api";
+    let allP = [], cart = [], curP = null, selectedSize = null, currentPhotoIdx = 0;
+    const isAuth = localStorage.getItem('user') !== null;
+    let bonuses = isAuth ? (parseFloat(localStorage.getItem('user_bonuses')) || 0) : 0;
+    let gameActive = false, spawnInterval;
+    let isCodeSent = false;
+
+    // Словник мовних пакетів для перекладу
+    const langData = {
+        UA: {
+            menu_title: "МЕНЮ", home: "Головна", ai: "AI Стиліст", game: "Бонусна гра", cats: "Категорії",
+            all_goods: "Всі товари", outer: "Верхній одяг", sweaters: "Кофти", pants: "Штани",
+            orders: "Мої замовлення", profile: "Профіль", support: "Підтримка 24/7",
+            all: "Всі", sort: "Сортувати:", sort_def: "За замовчуванням", sort_cheap: "Спочатку дешевші",
+            sort_expensive: "Спочатку дорожчі", search: "Пошук...", f_contact: "КОНТАКТ-ЦЕНТР", f_hours: "Пн-Пт 9:00 - 22:00",
+            f_cabinet: "ОСОБИСТИЙ КАБІНЕТ", f_history: "Історія замовлень", f_data: "Мої дані", f_club: "Клубна програма",
+            f_buyers: "ПОКУПЦЯМ", f_deliv: "Оплата та доставка", f_ret: "Повернення", choose_size: "Оберіть розмір:",
+            add_to_cart: "ДОДАТИ В КОШИК", login_txt: "Логін", balance_txt: "Баланс", exit_btn: "ВИЙТИ",
+            enter_code: "Введіть 4-значний код:", login_action: "УВІЙТИ", bonuses_txt: "Бонуси", save_close: "ЗАКРИТИ ТА ЗБЕРЕГТИ",
+            close_btn: "ЗАКРИТИ", select_size_alert: "Оберіть розмір!", input_login_alert: "Введіть логін!",
+            server_error_alert: "Сервер не відповідає!", wrong_code_alert: "Невірний код!", enter_addr_alert: "Вкажіть адресу!",
+            success_alert: "Успішно!", login_first_alert: "Увійдіть у профіль!"
+        },
+        EN: {
+            menu_title: "MENU", home: "Home", ai: "AI Stylist", game: "Bonus Game", cats: "Categories",
+            all_goods: "All Products", outer: "Outerwear", sweaters: "Sweaters", pants: "Pants",
+            orders: "My Orders", profile: "Profile", support: "Support 24/7",
+            all: "All", sort: "Sort by:", sort_def: "Default", sort_cheap: "Cheapest first",
+            sort_expensive: "Expensive first", search: "Search...", f_contact: "CONTACT CENTER", f_hours: "Mon-Fri 9:00 - 22:00",
+            f_cabinet: "MY ACCOUNT", f_history: "Order History", f_data: "My Data", f_club: "Club Program",
+            f_buyers: "FOR BUYERS", f_deliv: "Payment & Delivery", f_ret: "Returns", choose_size: "Choose size:",
+            add_to_cart: "ADD TO CART", login_txt: "Login", balance_txt: "Balance", exit_btn: "LOGOUT",
+            enter_code: "Enter 4-digit code:", login_action: "LOGIN", bonuses_txt: "Bonuses", save_close: "SAVE AND CLOSE",
+            close_btn: "CLOSE", select_size_alert: "Please select a size!", input_login_alert: "Enter login!",
+            server_error_alert: "Server not responding!", wrong_code_alert: "Wrong code!", enter_addr_alert: "Enter address!",
+            success_alert: "Success!", login_first_alert: "Please login first!"
+        },
+        DE: {
+            menu_title: "MENÜ", home: "Startseite", ai: "AI Stylist", game: "Bonusspiel", cats: "Kategorien",
+            all_goods: "Alle Produkte", outer: "Oberbekleidung", sweaters: "Pullover", pants: "Hosen",
+            orders: "Meine Bestellungen", profile: "Profil", support: "Support 24/7",
+            all: "Alle", sort: "Sortieren:", sort_def: "Standard", sort_cheap: "Günstigste zuerst",
+            sort_expensive: "Teuerste zuerst", search: "Suchen...", f_contact: "KONTAKT-CENTER", f_hours: "Mo-Fr 9:00 - 22:00",
+            f_cabinet: "MEIN KONTO", f_history: "Bestellverlauf", f_data: "Meine Daten", f_club: "Club-Programm",
+            f_buyers: "FÜR KÄUFER", f_deliv: "Zahlung & Lieferung", f_ret: "Rückgabe", choose_size: "Größe wählen:",
+            add_to_cart: "IN DEN WARENKORB", login_txt: "Login", balance_txt: "Kontostand", exit_btn: "AUSLOGGEN",
+            enter_code: "4-stelligen Code eingeben:", login_action: "EINLOGGEN", bonuses_txt: "Boni", save_close: "SPEICHERN UND SCHLIESSEN",
+            close_btn: "SCHLIESSEN", select_size_alert: "Bitte wählen Sie eine Größe!", input_login_alert: "Login eingeben!",
+            server_error_alert: "Server antwortet nicht!", wrong_code_alert: "Falscher Code!", enter_addr_alert: "Adresse eingeben!",
+            success_alert: "Erfolgreich!", login_first_alert: "Bitte loggen Sie sich zuerst ein!"
+        }
+    };
+
+    // Функція відображення гарного внутрішньосайтового Toast-повідомлення замість стандартного alert
+    function showToast(message) {
+        let toast = document.getElementById('custom-toast');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'custom-toast';
+            toast.className = 'custom-toast';
+            toast.innerHTML = `<i class="fas fa-exclamation-circle"></i> <span id="toast-text"></span>`;
+            document.body.appendChild(toast);
+        }
+        document.getElementById('toast-text').innerText = message;
+        toast.classList.add('show');
+        setTimeout(() => { toast.classList.remove('show'); }, 3000);
+    }
+    
+    // Перевизначаємо системний alert сайту на кастомний
+    window.alert = showToast;
+
+    async function load() {
+        // Завантаження збереженої мови з пам'яті (тихо, без алерту)
+        const savedLang = localStorage.getItem('selected_lang') || 'UA';
+        setLang(savedLang, true);
+
+        try {
+            const res = await fetch(`${api}/products`);
+            allP = await res.json();
+            render(allP);
+            updateBonusesUI();
+        } catch(e) { console.error("Помилка завантаження товарів"); }
+    }
+
+    function render(data) {
+        const grid = document.getElementById('products-grid');
+        if(data.length === 0) {
+            grid.innerHTML = `<p style="color:#aaa; text-align:center; width:100%; padding:40px 0;">Нічого не знайдено</p>`;
+            return;
+        }
+        grid.innerHTML = data.map((p, i) => {
+            let imgUrl = p.images && p.images[0] ? p.images[0] : '';
+            if (imgUrl.includes('127.0.0.1:5000')) {
+                imgUrl = imgUrl.replace('http://127.0.0.1:5000', window.location.origin);
+            } else if (!imgUrl.startsWith('http')) {
+                imgUrl = window.location.origin + (imgUrl.startsWith('/') ? '' : '/') + imgUrl;
+            }
+            return `
+                <div class="card" onclick="openP(${i})">
+                    <img src="${imgUrl}" onerror="this.src='https://via.placeholder.com/200?text=No+Photo'">
+                    <div style="padding:15px;">
+                        <h3 style="font-size:15px; margin:0 0 5px 0;">${p.name}</h3>
+                        <b>${p.price} ₴</b>
+                    </div>
+                </div>`;
+        }).join('');
+    }
+
+    // Реалізація миттєвого пошуку товарів
+    function handleSearch() {
+        const query = document.getElementById('search-input').value.toLowerCase().trim();
+        if(!query) {
+            render(allP);
+            return;
+        }
+        const filtered = allP.filter(p => 
+            p.name.toLowerCase().includes(query) || 
+            (p.desc && p.desc.toLowerCase().includes(query))
+        );
+        render(filtered);
+    }
+
+    function openP(i) {
+        curP = allP[i]; currentPhotoIdx = 0; selectedSize = null;
+        updatePhoto();
+        document.getElementById('m-title').innerText = curP.name;
+        document.getElementById('m-price').innerText = curP.price + " ₴";
+        document.getElementById('m-desc').innerText = curP.desc || "";
+        const sb = document.getElementById('m-sizes-container');
+        sb.innerHTML = curP.sizes ? curP.sizes.map(s => `<div class="size-chip" onclick="selS(this,'${s}')">${s}</div>`).join('') : "";
+        const arrows = document.querySelectorAll('.nav-arrow');
+        const hasMany = curP.images && curP.images.length > 1;
+        arrows.forEach(a => hasMany ? a.classList.add('visible') : a.classList.remove('visible'));
+        openM('prodModal');
+    }
+
+    function selS(el, s) { document.querySelectorAll('.size-chip').forEach(c => c.classList.remove('active')); el.classList.add('active'); selectedSize = s; }
+    
+    function updatePhoto() {
+        let imgUrl = curP.images ? curP.images[currentPhotoIdx] : '';
+        if (imgUrl.includes('127.0.0.1:5000')) {
+            imgUrl = imgUrl.replace('http://127.0.0.1:5000', window.location.origin);
+        } else if (imgUrl && !imgUrl.startsWith('http')) {
+            imgUrl = window.location.origin + (imgUrl.startsWith('/') ? '' : '/') + imgUrl;
+        }
+        document.getElementById('m-img').src = imgUrl;
+    }
+
+    function changePhoto(dir) { currentPhotoIdx += dir; if (currentPhotoIdx < 0) currentPhotoIdx = curP.images.length - 1; if (currentPhotoIdx >= curP.images.length) currentPhotoIdx = 0; updatePhoto(); }
+    
+    function addToCart() { 
+        const currentLang = localStorage.getItem('selected_lang') || 'UA';
+        if (curP.sizes && curP.sizes.length > 0 && !selectedSize) {
+            return alert(langData[currentLang].select_size_alert); 
+        }
+        cart.push({...curP, size: selectedSize}); 
+        
+        // Оновлюємо значення в обох лічильниках (нижній та ВЕРХНІЙ біля кошика)
+        document.getElementById('cart-count').innerText = cart.length; 
+        document.getElementById('cart-count-top').innerText = cart.length; 
+        
+        closeM('prodModal'); 
+    }
+
+    async function handleAuth() {
+        const currentLang = localStorage.getItem('selected_lang') || 'UA';
+        const contact = document.getElementById('auth-input').value.trim();
+        const btn = document.getElementById('auth-btn');
+        if (!contact) return alert(langData[currentLang].input_login_alert);
+        if (!isCodeSent) {
+            btn.innerText = currentLang === 'UA' ? "НАДСИЛАЄМО..." : currentLang === 'EN' ? "SENDING..." : "SENDEN...";
+            try {
+                const res = await fetch(`${api}/auth/request`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ contact: contact })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    isCodeSent = true;
+                    document.getElementById('auth-code-container').style.display = 'block';
+                    btn.innerText = currentLang === 'UA' ? "ПІДТВЕРДИТИ КОД" : currentLang === 'EN' ? "VERIFY CODE" : "CODE BESTÄTIGEN";
+                } else {
+                    alert((currentLang === 'UA' ? "Помилка: " : "Error: ") + (data.message || "..."));
+                    btn.innerText = langData[currentLang].login_action;
+                }
+            } catch (e) { alert(langData[currentLang].server_error_alert); btn.innerText = langData[currentLang].login_action; }
+        } else {
+            const code = document.getElementById('auth-code-input').value.trim();
+            try {
+                const res = await fetch(`${api}/auth/verify`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ contact: contact, code: code })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    localStorage.setItem('user', contact);
+                    if(!localStorage.getItem('first_reg')) {
+                        bonuses += 500;
+                        localStorage.setItem('user_bonuses', bonuses);
+                        localStorage.setItem('first_reg', 'true');
+                    }
+                    location.reload();
+                } else { alert(langData[currentLang].wrong_code_alert); }
+            } catch (e) { alert(langData[currentLang].server_error_alert); }
+        }
+    }
+
+    function logout() { localStorage.removeItem('user'); location.reload(); }
+
+    function openProfile() { 
+        const u = localStorage.getItem('user'); 
+        if(u){ 
+            document.getElementById('auth-form-ui').style.display='none'; 
+            document.getElementById('user-info').style.display='block'; 
+            document.getElementById('user-display').innerText = u; 
+            updateBonusesUI();
+        } else {
+            isCodeSent = false;
+            document.getElementById('auth-code-container').style.display = 'none';
+            document.getElementById('auth-btn').innerText = langData[localStorage.getItem('selected_lang') || 'UA'].login_action;
+        }
+        openM('authModal'); 
+    }
+
+    function openSection(type) {
+        const title = document.getElementById('info-title');
+        const body = document.getElementById('info-body');
+        if (type === 'cart') {
+            title.innerText = localStorage.getItem('selected_lang') === 'EN' ? "Cart" : localStorage.getItem('selected_lang') === 'DE' ? "Warenkorb" : "Кошик";
+            if (cart.length === 0) body.innerHTML = localStorage.getItem('selected_lang') === 'EN' ? "Cart is empty." : localStorage.getItem('selected_lang') === 'DE' ? "Warenkorb ist leer." : "Кошик порожній.";
+            else {
+                let total = cart.reduce((s, i) => s + i.price, 0);
+                body.innerHTML = `${cart.map(i => `<div style="padding:10px 0; border-bottom:1px solid #eee;">${i.name} (${i.size || 'Унів'}) - ${i.price} ₴</div>`).join('')}
+                <div style="margin-top:15px; background:#f9f9f9; padding:15px; border-radius:12px;">
+                    <input type="text" id="order-city" class="auth-input" placeholder="Місто">
+                    <input type="text" id="order-post" class="auth-input" placeholder="№ Відділення">
+                    <select id="order-pay" class="auth-input"><option>Карта</option><option>Накладений</option></select>
+                    <div>Списати бонуси: <input type="checkbox" id="use-bonuses-check" checked onchange="updTotal(${total})"></div>
+                    <h3 id="final-total">Разом: ${(total - (bonuses > 0 ? bonuses : 0)).toFixed(2)} ₴</h3>
+                    <button class="action-btn" onclick="checkout(${total})">ОФОРМИТИ</button>
+                </div>`;
+            }
+        } else if (type === 'history') {
+            title.innerText = "Історія";
+            const h = JSON.parse(localStorage.getItem('order_history')) || [];
+            body.innerHTML = h.length ? h.map(o => `<div style="padding:10px 0; border-bottom:1px solid #eee;">${o.date} - ${o.total} ₴</div>`).join('') : "Історія порожня.";
+        } else {
+            const infoData = {
+                club: { title: "Клубна програма", body: "500 ₴ при реєстрації та 10% кешбеку." },
+                delivery: { title: "Оплата та доставка", body: "Нова Пошта (1-3 дні)." },
+                return: { title: "Повернення", body: "14 днів." }
+            };
+            title.innerText = infoData[type].title;
+            body.innerHTML = infoData[type].body;
+        }
+        openM('infoModal');
+    }
+
+    async function checkout(total) {
+        const currentLang = localStorage.getItem('selected_lang') || 'UA';
+        const city = document.getElementById('order-city').value;
+        const post = document.getElementById('order-post').value;
+        if (!city || !post) return alert(langData[currentLang].enter_addr_alert);
+        const user = localStorage.getItem('user') || "Гість";
+        const useB = document.getElementById('use-bonuses-check').checked;
+        let final = useB ? Math.max(total - bonuses, 0) : total;
+        const msg = `📦 ЗАМОВЛЕННЯ!\n👤 Юзер: ${user}\n💰 Сума: ${final} ₴\n📍 Адреса: ${city}, №${post}`;
+        
+        await fetch(`https://api.telegram.org/bot8780115453:AAFrrSsFd2wYGgdn0c_PzzK-PrXuXm04VfI/sendMessage`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({chat_id: "978471607", text: msg})
+        });
+        
+        if(localStorage.getItem('user')) {
+            let earned = total * 0.10;
+            bonuses = useB ? earned : bonuses + earned;
+            localStorage.setItem('user_bonuses', bonuses);
+        }
+        let h = JSON.parse(localStorage.getItem('order_history')) || [];
+        h.push({date: new Date().toLocaleDateString(), total: final});
+        localStorage.setItem('order_history', JSON.stringify(h));
+        
+        cart = []; 
+        document.getElementById('cart-count').innerText = 0;
+        document.getElementById('cart-count-top').innerText = 0;
+        
+        alert(langData[currentLang].success_alert); 
+        location.reload();
+    }
+
+    function updTotal(total) {
+        const check = document.getElementById('use-bonuses-check').checked;
+        document.getElementById('final-total').innerText = "Разом: " + (check ? Math.max(total - bonuses, 0).toFixed(2) : total) + " ₴";
+    }
+
+    function updateBonusesUI() { 
+        const userLoggedIn = localStorage.getItem('user') !== null;
+        const displayValue = userLoggedIn ? bonuses.toFixed(2) : "0.00";
+        const topB = document.getElementById('top-bonuses');
+        const profB = document.getElementById('profile-bonuses');
+        if(topB) topB.innerText = displayValue + " ₴"; 
+        if(profB) profB.innerText = displayValue + " ₴"; 
+    }
+    
+    function openM(id) { document.getElementById(id).style.display = 'flex'; }
+    function closeM(id) { document.getElementById(id).style.display = 'none'; }
+    function toggleMenu() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').style.display = document.getElementById('sidebar').classList.contains('open') ? 'block' : 'none'; }
+    function toggleSub() { const s = document.getElementById('sub-menu'); s.style.display = s.style.display==='block' ? 'none' : 'block'; }
+    function filterBy(c) { render(c === 'Всі' ? allP : allP.filter(p => p.cat === c)); }
+
+    function openGame() { 
+        if (!localStorage.getItem('user')) { 
+            alert(langData[localStorage.getItem('selected_lang') || 'UA'].login_first_alert); 
+            openProfile(); 
+            return; 
+        }
+        openM('gameModal'); gameActive = true; 
+        spawnInterval = setInterval(spawnItem, 400); 
+    }
+
+    function spawnItem() {
+        if(!gameActive) return;
+        const canvas = document.getElementById('game-canvas');
+        const item = document.createElement('div');
+        const isGood = Math.random() > 0.3;
+        item.className = 'game-item';
+        item.innerText = isGood ? '🏷️' : '💣';
+        item.style.left = Math.random() * (canvas.offsetWidth - 40) + 'px';
+        item.style.top = '-50px';
+        item.onclick = (e) => { e.stopPropagation(); bonuses += isGood ? 0.25 : -0.5; if (bonuses < 0) bonuses = 0; document.getElementById('game-res').innerText = bonuses.toFixed(2); updateBonusesUI(); item.remove(); };
+        canvas.appendChild(item);
+        let pos = -50;
+        const fall = setInterval(() => { pos += 5; item.style.top = pos + 'px'; if (pos > canvas.offsetHeight || !gameActive) { clearInterval(fall); item.remove(); } }, 20);
+    }
+    
+    function closeGame() { gameActive = false; clearInterval(spawnInterval); localStorage.setItem('user_bonuses', bonuses); closeM('gameModal'); }
+
+    window.onload = load;
+
+    function toggleLang() {
+        const list = document.getElementById('lang-list');
+        list.style.display = (list.style.display === 'block') ? 'none' : 'block';
+    }
+
+    // Повноцінне перемикання мов з використанням дата-атрибутів
+    function setLang(lang, silent = false) {
+        document.getElementById('cur-lang').innerText = lang; 
+        localStorage.setItem('selected_lang', lang);
+        
+        const list = document.getElementById('lang-list');
+        if (list) list.style.display = 'none'; 
+        
+        // Переклад текстових блоків по всьому сайту
+        const dict = langData[lang];
+        if(dict) {
+            document.querySelectorAll('[data-lang]').forEach(el => {
+                const key = el.getAttribute('data-lang');
+                if(dict[key]) el.innerText = dict[key];
+            });
+            
+            // Окремо змінюємо placeholder для інпуту пошуку
+            const sInput = document.getElementById('search-input');
+            if(sInput && dict.search) sInput.placeholder = dict.search;
+        }
+        
+        if(!silent) {
+            const msg = lang === 'UA' ? "Мову змінено!" : lang === 'EN' ? "Language changed!" : "Sprache geändert!";
+            alert(msg); 
+        }
+    }
+</script>
+</body>
+</html>
