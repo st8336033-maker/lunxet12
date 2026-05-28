@@ -680,11 +680,19 @@
             if (cart.length === 0) body.innerHTML = localStorage.getItem('selected_lang') === 'EN' ? "Cart is empty." : localStorage.getItem('selected_lang') === 'DE' ? "Warenkorb ist leer." : "Кошик порожній.";
             else {
                 let total = cart.reduce((s, i) => s + i.price, 0);
+                const isLoggedIn = localStorage.getItem('user');
+                const loginWarning = isLoggedIn ? '' : `
+                    <div style="background:#fff3cd; border:1px solid #ffc107; border-radius:10px; padding:12px; margin-bottom:12px; text-align:center;">
+                        ⚠️ <b>Для оформлення замовлення потрібно увійти в акаунт</b><br>
+                        <button onclick="closeM('infoModal'); openM('authModal');" style="margin-top:8px; background:var(--main); border:none; padding:8px 20px; border-radius:8px; font-weight:bold; cursor:pointer;">УВІЙТИ</button>
+                    </div>`;
                 body.innerHTML = `${cart.map(i => `<div style="padding:10px 0; border-bottom:1px solid #eee;">${i.name} (${i.size || 'Унів'}) - ${i.price} ₴</div>`).join('')}
                 <div style="margin-top:15px; background:#f9f9f9; padding:15px; border-radius:12px;">
-                    <input type="text" id="order-city" class="auth-input" placeholder="Місто">
-                    <input type="text" id="order-post" class="auth-input" placeholder="№ Відділення">
-                    <select id="order-pay" class="auth-input"><option>Карта</option><option>Накладений</option></select>
+                    ${loginWarning}
+                    <input type="text" id="order-phone" class="auth-input" placeholder="📱 Номер телефону +380... *">
+                    <input type="text" id="order-city" class="auth-input" placeholder="🏙️ Місто *">
+                    <input type="text" id="order-post" class="auth-input" placeholder="📦 № Відділення Нової Пошти *">
+                    <select id="order-pay" class="auth-input"><option>Карта</option><option>Накладений платіж</option></select>
                     <div>Списати бонуси: <input type="checkbox" id="use-bonuses-check" checked onchange="updTotal(${total})"></div>
                     <h3 id="final-total">Разом: ${(total - (bonuses > 0 ? bonuses : 0)).toFixed(2)} ₴</h3>
                     <button class="action-btn" onclick="checkout(${total})">ОФОРМИТИ</button>
@@ -708,13 +716,29 @@
 
     async function checkout(total) {
         const currentLang = localStorage.getItem('selected_lang') || 'UA';
-        const city = document.getElementById('order-city').value;
-        const post = document.getElementById('order-post').value;
-        if (!city || !post) return alert(langData[currentLang].enter_addr_alert);
-        const user = localStorage.getItem('user') || "Гість";
+        const user = localStorage.getItem('user');
+
+        // Перевірка авторизації
+        if (!user) {
+            alert('⚠️ Для оформлення замовлення потрібно увійти в акаунт!');
+            closeM('infoModal');
+            openM('authModal');
+            return;
+        }
+
+        const phone = document.getElementById('order-phone').value.trim();
+        const city  = document.getElementById('order-city').value.trim();
+        const post  = document.getElementById('order-post').value.trim();
+
+        // Перевірка обов'язкових полів
+        if (!phone) return alert('⚠️ Введіть номер телефону!');
+        if (phone.replace(/\D/g,'').length < 10) return alert('⚠️ Введіть коректний номер телефону!');
+        if (!city)  return alert('⚠️ Введіть місто!');
+        if (!post)  return alert('⚠️ Введіть номер відділення!');
+
         const useB = document.getElementById('use-bonuses-check').checked;
         let final = useB ? Math.max(total - bonuses, 0) : total;
-        const msg = `📦 ЗАМОВЛЕННЯ!\n👤 Юзер: ${user}\n💰 Сума: ${final} ₴\n📍 Адреса: ${city}, №${post}`;
+        const msg = `📦 ЗАМОВЛЕННЯ!\n👤 Юзер: ${user}\n📱 Телефон: ${phone}\n💰 Сума: ${final} ₴\n📍 Адреса: ${city}, №${post}`;
         
         await fetch(`https://api.telegram.org/bot8780115453:AAFrrSsFd2wYGgdn0c_PzzK-PrXuXm04VfI/sendMessage`, {
             method: 'POST',
