@@ -738,13 +738,24 @@
 
         const useB = document.getElementById('use-bonuses-check').checked;
         let final = useB ? Math.max(total - bonuses, 0) : total;
-        const msg = `📦 ЗАМОВЛЕННЯ!\n👤 Юзер: ${user}\n📱 Телефон: ${phone}\n💰 Сума: ${final} ₴\n📍 Адреса: ${city}, №${post}`;
+
+        // Показуємо що обробляється
+        const btn = document.querySelector('#infoModal .action-btn');
+        if (btn) { btn.innerText = '⏳ Оформляємо...'; btn.disabled = true; }
+
+        const itemsList = cart.map(i => `• ${i.name} (${i.size || 'Унів'}) - ${i.price} ₴`).join('\n');
+        const msg = `📦 НОВЕ ЗАМОВЛЕННЯ!\n👤 Клієнт: ${user}\n📱 Телефон: ${phone}\n📍 ${city}, відд. №${post}\n💳 Оплата: ${document.getElementById('order-pay').value}\n\n${itemsList}\n\n💰 Разом: ${final} ₴`;
         
-        await fetch(`https://api.telegram.org/bot8780115453:AAFrrSsFd2wYGgdn0c_PzzK-PrXuXm04VfI/sendMessage`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({chat_id: "978471607", text: msg})
-        });
+        try {
+            await fetch(`https://api.telegram.org/bot8780115453:AAFrrSsFd2wYGgdn0c_PzzK-PrXuXm04VfI/sendMessage`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({chat_id: "978471607", text: msg})
+            });
+        } catch(e) {
+            console.log('Telegram error:', e);
+            // Продовжуємо навіть якщо Telegram не відповів
+        }
         
         if(localStorage.getItem('user')) {
             let earned = total * 0.10;
@@ -752,14 +763,15 @@
             localStorage.setItem('user_bonuses', bonuses);
         }
         let h = JSON.parse(localStorage.getItem('order_history')) || [];
-        h.push({date: new Date().toLocaleDateString(), total: final});
+        h.push({date: new Date().toLocaleDateString(), total: final, phone: phone, city: city});
         localStorage.setItem('order_history', JSON.stringify(h));
         
         cart = []; 
         document.getElementById('cart-count').innerText = 0;
         document.getElementById('cart-count-top').innerText = 0;
         
-        alert(langData[currentLang].success_alert); 
+        closeM('infoModal');
+        alert('✅ Замовлення оформлено! Очікуйте дзвінка для підтвердження.'); 
         location.reload();
     }
 
